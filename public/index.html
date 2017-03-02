@@ -5,8 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Go-Lang</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 </head>
 <body>
+  <script>
+    $(()=>{
+      $.ajax({
+        type: 'GET',
+        url: '/todos',
+      }).done(data=>{
+        listRender(data);
+      });
+    });
+
+    function listRender(data) {
+      $('#todoList').empty();
+      let Li = data.map(obj => {
+        return `<li ondblclick=deleteTodo('${obj._id}')>${obj.task}</li>`;
+      });
+      $('#todoList').append(Li);
+    }
+    function deleteTodo(id) {
+      $.ajax({
+        type: 'DELETE',
+        url: `/todos/${id}`,
+      }).done(data=>{
+        listRender(data);
+      });
+    }
+    function ajaxCall(e) {
+      e.preventDefault();
+      var task = $("#task").val();
+      var data = {"Task":task}
+      if(task === "") {
+        return
+      }
+      $.ajax({
+        type: 'POST',
+        url: '/todos',
+        data
+      }).done(data=>{
+        listRender(data);
+        $("#task").val("");
+      });
+    }
+  </script>
   <h1>Hello From Go through HTML</h1>
+  <form onsubmit="ajaxCall(event)">
+    <input id="task" type="text">
+    <button type="submit">Post</button>
+  </form>
+  <div>
+    <ul id="todoList">
+    </ul>
+  </div>
 </body>
 </html>

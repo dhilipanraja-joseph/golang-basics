@@ -5,16 +5,15 @@ import (
   "net/http"
   "html/template"
   "encoding/json"
-  //"io/ioutil"
-
+  "strings"
   "github.com/gorilla/mux"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
 )
 
 type Todo struct {
-  Id    bson.ObjectId   `bson:"_id,omitempty" json:"-"`
-  task  string          `bson:"task" json:"task"`
+  Id    bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
+  Task  string          `bson:"task" json:"task"`
 }
 
 func rootRoute(w http.ResponseWriter, r *http.Request) {
@@ -22,40 +21,58 @@ func rootRoute(w http.ResponseWriter, r *http.Request) {
   templates.ExecuteTemplate(w, "index.html", nil)
 }
 
-func keyHandler(w http.ResponseWriter, r *http.Request) {
-  vars := mux.Vars(r)
-  w.WriteHeader(http.StatusOK)
-  fmt.Fprintf(w, "keys: %v\n", vars["keys"])
-}
-
 func getTodos(w http.ResponseWriter, r *http.Request) {
-  w.WriteHeader(http.StatusOK)
-  fmt.Fprintf(w, "Get all todos from dataBase")
+  s := dbSession()
+  defer s.Close()
+  getJSONresp(w)
 }
 
+// POST METHOD - to Create New Todo
 func addTodo(w http.ResponseWriter, r *http.Request) {
-    s := dbSession()
-    var d Todo
-    decoder := json.NewDecoder(r.Body)
-    err := decoder.Decode(&d)
-    // r.ParseForm()
-    // for key, _ := range r.Form {
-    //   json.Unmarshal([]byte(key),&d)
-    // }
-    // body, err := ioutil.ReadAll(r.Body)
-    // json.Unmarshal(body,&d)
-    // fmt.Println(json.NewDecoder(r.Body))
-    // err := d.Decode(&todo)
-    // if err != nil {
-    //   fmt.Println("cannot add:",err,todo)
-    //  return
-    // }
-    fmt.Println(decoder,d, err)
-    defer r.Body.Close()
-    defer s.Close()
-    // session := s.Copy()
-    // session.DB("goTodos").C("todos").Insert(todo)
-    // w.WriteHeader(http.StatusOK)
+  s := dbSession()
+  r.ParseForm()
+  task := strings.Join(r.Form["Task"], "")
+  todo := Todo{Task:task}
+  defer r.Body.Close()
+  defer s.Close()
+  db := s.DB("goTodos").C("todos")
+  err := db.Insert(todo)
+  if err != nil {
+    panic(err)
+  }
+  getJSONresp(w)
+}
+
+// DELETE METHOD - TO Delete A Todo By ID
+func deleteTodo(w http.ResponseWriter, r *http.Request) {
+  vars := mux.Vars(r)
+  id := bson.ObjectIdHex(vars["id"])
+  s := dbSession()
+  defer s.Close()
+  db := s.DB("goTodos").C("todos")
+  err := db.Remove(bson.M{ "_id": id })
+  if err != nil {
+    panic(err)
+  }
+  getJSONresp(w)
+}
+
+// Generate JSON Response with all Todos - Getall
+func getJSONresp(w http.ResponseWriter) {
+  var t []Todo
+  s:= dbSession()
+  err := s.DB("goTodos").C("todos").Find(bson.M{}).All(&t)
+  if err != nil {
+    panic(err)
+  }
+  resB, er := json.MarshalIndent(t, "", "   ")
+  if er != nil {
+    panic(er)
+  }
+  w.Header().Set("Content-Type", "application/json; charset=utf-8")
+  w.Write(resB)
+  w.WriteHeader(http.StatusOK)
+
 }
 
 func dbSession() *mgo.Session {
@@ -63,7 +80,7 @@ func dbSession() *mgo.Session {
 	if err != nil {
 		panic(err)
 	}
-  return s
+  return s.Copy()
 }
 
 func main() {
@@ -73,7 +90,7 @@ func main() {
   s := r.PathPrefix("/todos").Subrouter() // Create SubRoutes
   s.HandleFunc("", getTodos).Methods("GET") // "/todos"
   s.HandleFunc("", addTodo).Methods("POST") // Create todos
-  s.HandleFunc("/{keys}", keyHandler).Methods("GET") // "/todos/{keys}"
+  s.HandleFunc("/{id}", deleteTodo).Methods("DELETE")
 
   fmt.Println(http.ListenAndServe(":8000", r))  // Server Listener
 }
