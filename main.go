@@ -6,14 +6,16 @@ import (
   "html/template"
   "encoding/json"
   "strings"
+
   "github.com/gorilla/mux"
   "gopkg.in/mgo.v2"
   "gopkg.in/mgo.v2/bson"
 )
 
 type Todo struct {
-  Id    bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
-  Task  string          `bson:"task" json:"task"`
+  Id        bson.ObjectId   `bson:"_id,omitempty" json:"_id"`
+  Task      string          `bson:"task" json:"task"`
+  Complete  bool            `bson:false json:false`
 }
 
 func rootRoute(w http.ResponseWriter, r *http.Request) {
@@ -61,6 +63,7 @@ func deleteTodo(w http.ResponseWriter, r *http.Request) {
 func getJSONresp(w http.ResponseWriter) {
   var t []Todo
   s:= dbSession()
+  defer s.Close()
   err := s.DB("goTodos").C("todos").Find(bson.M{}).All(&t)
   if err != nil {
     panic(err)
@@ -73,6 +76,23 @@ func getJSONresp(w http.ResponseWriter) {
   w.Write(resB)
   w.WriteHeader(http.StatusOK)
 
+}
+
+// PUT METHOD - To Toggle Complete
+func toggleComplete(w http.ResponseWriter, r *http.Request) {
+  var t Todo
+  vars := mux.Vars(r)
+  id := bson.ObjectIdHex(vars["id"])
+  s := dbSession()
+  defer s.Close()
+  db := s.DB("goTodos").C("todos")
+  err := db.Find(bson.M{"_id":id}).One(&t)
+  t.Complete = !t.Complete
+  err = db.Update(bson.M{"_id":id},t)
+  if err != nil {
+    panic(err)
+  }
+  getJSONresp(w)
 }
 
 func dbSession() *mgo.Session {
@@ -91,6 +111,7 @@ func main() {
   s.HandleFunc("", getTodos).Methods("GET") // "/todos"
   s.HandleFunc("", addTodo).Methods("POST") // Create todos
   s.HandleFunc("/{id}", deleteTodo).Methods("DELETE")
+  s.HandleFunc("/{id}", toggleComplete).Methods("PUT")
 
   fmt.Println(http.ListenAndServe(":8000", r))  // Server Listener
 }

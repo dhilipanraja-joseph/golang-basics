@@ -6,6 +6,11 @@
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>Go-Lang</title>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <style>
+    span:hover{
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -17,13 +22,33 @@
         listRender(data);
       });
     });
-
     function listRender(data) {
+      if (data == null) {
+        $('#todoList').empty();
+        return;
+      }
       $('#todoList').empty();
       let Li = data.map(obj => {
-        return `<li ondblclick=deleteTodo('${obj._id}')>${obj.task}</li>`;
+        if (obj.Complete) {
+          return `<li>
+            <span onclick=toggleComplete('${obj._id}') style='color:grey;font-size:20px;font-style:italic;text-decoration:line-through'>${obj.task}</span>
+            <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) </span>
+          </li>`;
+        }
+        return `<li>
+          <span style='font-size:20px' onclick=toggleComplete('${obj._id}')>${obj.task}</span>
+          <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) </span>
+        </li>`;
       });
       $('#todoList').append(Li);
+    }
+    function toggleComplete(id) {
+      $.ajax({
+        type: 'PUT',
+        url: `/todos/${id}`
+      }).done(data=>{
+        listRender(data);
+      });
     }
     function deleteTodo(id) {
       $.ajax({
@@ -50,10 +75,11 @@
       });
     }
   </script>
-  <h1>Hello From Go through HTML</h1>
+  <h1>Simple Todo with mgo</h1>
+  <h3>Click the task to toggle Complete, (x) to delete</h3>
   <form onsubmit="ajaxCall(event)">
     <input id="task" type="text">
-    <button type="submit">Post</button>
+    <button type="submit">Add Task</button>
   </form>
   <div>
     <ul id="todoList">
