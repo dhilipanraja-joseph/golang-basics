@@ -95,6 +95,26 @@ func toggleComplete(w http.ResponseWriter, r *http.Request) {
   getJSONresp(w)
 }
 
+// PUT METHOD - To Rename Task
+func renameTodo(w http.ResponseWriter, r *http.Request)  {
+  var t Todo
+  vars := mux.Vars(r)
+  id := bson.ObjectIdHex(vars["id"])
+  r.ParseForm()
+  task := strings.Join(r.Form["Task"], "")
+  s := dbSession()
+  defer s.Close()
+  db := s.DB("goTodos").C("todos")
+  err := db.Find(bson.M{"_id":id}).One(&t)
+  t.Task = task
+  err = db.Update(bson.M{"_id":id},t)
+  if err != nil {
+    panic(err)
+  }
+  getJSONresp(w)
+}
+
+// Returns MongoDB Session Copy
 func dbSession() *mgo.Session {
   s, err := mgo.Dial("mongodb://localhost")
 	if err != nil {
@@ -111,7 +131,8 @@ func main() {
   s.HandleFunc("", getTodos).Methods("GET") // "/todos"
   s.HandleFunc("", addTodo).Methods("POST") // Create todos
   s.HandleFunc("/{id}", deleteTodo).Methods("DELETE")
-  s.HandleFunc("/{id}", toggleComplete).Methods("PUT")
+  s.HandleFunc("/complete/{id}", toggleComplete).Methods("PUT")
+  s.HandleFunc("/rename/{id}", renameTodo).Methods("PUT")
 
   fmt.Println(http.ListenAndServe(":8000", r))  // Server Listener
 }

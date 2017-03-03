@@ -32,12 +32,14 @@
         if (obj.Complete) {
           return `<li>
             <span onclick=toggleComplete('${obj._id}') style='color:grey;font-size:20px;font-style:italic;text-decoration:line-through'>${obj.task}</span>
-            <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) </span>
+            <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) |</span>
+            <span style='color:green;font-size:12px' onclick=updateTodo('${obj._id}')> (Update) </span>
           </li>`;
         }
         return `<li>
           <span style='font-size:20px' onclick=toggleComplete('${obj._id}')>${obj.task}</span>
           <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) </span>
+          <span style='color:green;font-size:12px' onclick=updateTodo('${obj._id}')> (Update) </span>
         </li>`;
       });
       $('#todoList').append(Li);
@@ -45,7 +47,18 @@
     function toggleComplete(id) {
       $.ajax({
         type: 'PUT',
-        url: `/todos/${id}`
+        url: `/todos/complete/${id}`
+      }).done(data=>{
+        listRender(data);
+      });
+    }
+    function updateTodo(id) {
+      let task = prompt("Rename Task ?");
+      let data = {"Task": task};
+      $.ajax({
+        type: 'PUT',
+        url: `/todos/rename/${id}`,
+        data
       }).done(data=>{
         listRender(data);
       });
@@ -60,8 +73,8 @@
     }
     function ajaxCall(e) {
       e.preventDefault();
-      var task = $("#task").val();
-      var data = {"Task":task}
+      let task = $("#task").val();
+      let data = {"Task":task}
       if(task === "") {
         return
       }
