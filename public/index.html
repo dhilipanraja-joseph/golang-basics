@@ -10,18 +10,24 @@
     span:hover{
       cursor: pointer;
     }
+    input[type='text']{
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
   <script>
     $(()=>{
+      getAll()
+    });
+    function getAll() {
       $.ajax({
         type: 'GET',
         url: '/todos',
       }).done(data=>{
         listRender(data);
       });
-    });
+    }
     function listRender(data) {
       if (data == null) {
         $('#todoList').empty();
@@ -29,17 +35,19 @@
       }
       $('#todoList').empty();
       let Li = data.map(obj => {
+        let { _id, task } = obj;
         if (obj.Complete) {
-          return `<li>
-            <span onclick=toggleComplete('${obj._id}') style='color:grey;font-size:20px;font-style:italic;text-decoration:line-through'>${obj.task}</span>
-            <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) |</span>
-            <span style='color:green;font-size:12px' onclick=updateTodo('${obj._id}')> (Update) </span>
+          return `<li id='${obj._id}'>
+            <span onclick=toggleComplete('${_id}')
+                  style='color:grey;font-size:20px;font-style:italic;text-decoration:line-through'>${task}</span>
+            <span style='color:red;font-size:12px' onclick=deleteTodo('${_id}')> (Remove) |</span>
+            <span style='color:green;font-size:12px' onclick=clickUpdate('${_id}')> (Update) </span>
           </li>`;
         }
-        return `<li>
-          <span style='font-size:20px' onclick=toggleComplete('${obj._id}')>${obj.task}</span>
-          <span style='color:red;font-size:12px' onclick=deleteTodo('${obj._id}')> (Remove) </span>
-          <span style='color:green;font-size:12px' onclick=updateTodo('${obj._id}')> (Update) </span>
+        return `<li id='${_id}'>
+          <span style='font-size:20px' onclick=toggleComplete('${_id}')>${task}</span>
+          <span style='color:red;font-size:12px' onclick=deleteTodo('${_id}')> (Remove) </span>
+          <span style='color:green;font-size:12px' onclick=clickUpdate('${_id}')> (Update) </span>
         </li>`;
       });
       $('#todoList').append(Li);
@@ -52,14 +60,23 @@
         listRender(data);
       });
     }
+    function clickUpdate(id) {
+      $(`#${id}`).empty().append(`<input id='c${id}' type='text'></input>
+      <span style='color:red;font-size:12px' onclick=getAll()>(Cancel)</span>
+      <span style='color:green;font-size:12px' onclick=updateTodo('${id}')>(Ok)</span>`);
+    }
     function updateTodo(id) {
-      let task = prompt("Rename Task ?");
+      let task = $(`#c${id}`).val();
+      if (task === "") {
+        return
+      }
       let data = {"Task": task};
       $.ajax({
         type: 'PUT',
         url: `/todos/rename/${id}`,
         data
       }).done(data=>{
+        $(`#${id} span`).hide();
         listRender(data);
       });
     }
